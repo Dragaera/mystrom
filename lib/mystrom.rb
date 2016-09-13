@@ -1,5 +1,7 @@
 require 'mystrom/version'
 
-module Mystrom
-  # Your code goes here...
+require 'mystrom/wlan_switch'
+require 'mystrom/api_error'
+
+module MyStrom
 end
