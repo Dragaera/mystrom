@@ -1,6 +1,7 @@
 # coding: utf-8
 
 require 'json'
+require 'uri'
 
 require 'httparty'
 
@@ -21,6 +22,12 @@ module MyStrom
   #     puts "Messing with family - toggling floor lights."
   #     w.toggle
   #   end
+  #
+  # @example Proxying via SSH host
+  #   require 'mystrom'
+  #   require 'net/ssh/gateway'
+  #   gateway = Net::SSH::Gateway.new('jump.example.com', 'johndoe', password: 'hidden')
+  #   w = Mystrom::WLANSwitch.new('http://10.60.1.80', ssh_gateway: gateway)
   class WLANSwitch
     # Current power throughput in W
     # @return [Fixnum]
@@ -40,10 +47,12 @@ module MyStrom
     # @param opts [Hash] Additional options
     # @option opts [Bool] :auto_refresh (false) If data should be
     #   refreshed after every operation.
+    # @option opts [Net::SSH::Gateway] :ssh_gateway (nil) SSH gateway through
+    #   which to proxy the requests.
     def initialize(url, opts = {})
       @url = url
       @auto_refresh = opts.fetch(:auto_refresh, false)
-
+      @ssh_gateway = opts.fetch(:ssh_gateway, nil)
       update_data
     end
 
@@ -139,13 +148,31 @@ module MyStrom
     end
 
     def do_request(action)
-      url = "#{ @url }/#{ action }"
-      response = HTTParty.get(url)
+      if @ssh_gateway
+        response = do_request_ssh(action)
+      else
+        response = do_request_direct(action)
+      end
+
       case response.code
       when 200
         response.body
       else
         raise APIError, "HTTP response invalid: Status code: #{ response.code }, Body: #{ response.body }"
+      end
+    end
+
+    def do_request_direct(action)
+      url = "#{ @url }/#{ action }"
+      HTTParty.get(url)
+    end
+
+    def do_request_ssh(action)
+      uri = URI("#{ @url }/#{ action }")
+      @ssh_gateway.open(uri.hostname, uri.port) do |port|
+        uri.hostname = '127.0.0.1'
+        uri.port     = port
+        HTTParty.get(uri.to_s)
       end
     end
   end
