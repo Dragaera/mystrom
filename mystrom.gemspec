@@ -5,7 +5,7 @@ require 'mystrom/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'mystrom'
-  spec.version       = Mystrom::VERSION
+  spec.version       = MyStrom::VERSION
   spec.authors       = ['Michael Senn']
   spec.email         = ['michael@morrolan.ch']
 
